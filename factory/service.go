@@ -3,6 +3,7 @@ package factory
 import (
 	"time"
 
+	"hpc-express-service/airline" // Added import
 	"hpc-express-service/auth"
 	"hpc-express-service/common"
 	"hpc-express-service/customer"
@@ -27,10 +28,11 @@ type ServiceFactory struct {
 	MawbSvc                   mawb.Service
 	CustomerSvc               customer.Service
 	DashboardSvc              dashboard.Service
+	AirlineSvc                airline.Service // Added field
 }
 
-func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client) *ServiceFactory {
-	timeoutContext := time.Duration(60) * time.Second
+func NewServiceFactory(repoFactory *RepositoryFactory, gcsClient *gcs.Client) *ServiceFactory { // Renamed repo to repoFactory
+	defaultTimeout := 5 * time.Second // Added defaultTimeout
 
 	/*
 	* Sharing Services
@@ -38,33 +40,33 @@ func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client) *ServiceF
 
 	// TOPGLS
 	topglsSvc := topgls.NewService(
-		repo.TopglsRepo,
-		timeoutContext,
+		repoFactory.TopglsRepo, // Used repoFactory
+		defaultTimeout,         // Used defaultTimeout
 	)
 
 	// TOPGLS
 	shopeeSvc := shopee.NewService(
-		repo.ShopeeRepo,
-		timeoutContext,
+		repoFactory.ShopeeRepo, // Used repoFactory
+		defaultTimeout,         // Used defaultTimeout
 	)
 
 	// Upload Logging
 	uploadlogSvc := uploadlog.NewService(
-		repo.UploadlogRepo,
-		timeoutContext,
+		repoFactory.UploadlogRepo, // Used repoFactory
+		defaultTimeout,            // Used defaultTimeout
 		gcsClient,
 	)
 
 	// MAWB
 	mawbSvc := mawb.NewService(
-		repo.MawbRepo,
-		timeoutContext,
+		repoFactory.MawbRepo, // Used repoFactory
+		defaultTimeout,       // Used defaultTimeout
 	)
 
 	// Customer
 	customerSvc := customer.NewService(
-		repo.CustomerRepo,
-		timeoutContext,
+		repoFactory.CustomerRepo, // Used repoFactory
+		defaultTimeout,           // Used defaultTimeout
 	)
 	/*
 	* Sharing Services
@@ -72,36 +74,42 @@ func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client) *ServiceF
 
 	// Auth
 	authSvc := auth.NewService(
-		repo.AuthRepo,
-		timeoutContext,
+		repoFactory.AuthRepo, // Used repoFactory
+		defaultTimeout,       // Used defaultTimeout
 	)
 
 	// Common
 	dashboardSvc := dashboard.NewService(
-		repo.DashboardRepo,
-		timeoutContext,
+		repoFactory.DashboardRepo, // Used repoFactory
+		defaultTimeout,            // Used defaultTimeout
 	)
 
 	// Common
 	commonSvc := common.NewService(
-		repo.CommonRepo,
-		timeoutContext,
+		repoFactory.CommonRepo, // Used repoFactory
+		defaultTimeout,         // Used defaultTimeout
 	)
 
 	// Inbound Express
 	inboundExpressServiceSvc := inbound.NewInboundExpressService(
-		repo.InboundExpressRepositoryRepo,
-		timeoutContext,
+		repoFactory.InboundExpressRepositoryRepo, // Used repoFactory
+		defaultTimeout,                           // Used defaultTimeout
 		topglsSvc,
 		uploadlogSvc,
 	)
 
 	// Outbound Express
 	outboundExpressServiceSvc := outbound.NewOutboundExpressService(
-		repo.OutboundExpressRepositoryRepo,
-		timeoutContext,
+		repoFactory.OutboundExpressRepositoryRepo, // Used repoFactory
+		defaultTimeout,                            // Used defaultTimeout
 		shopeeSvc,
 		uploadlogSvc,
+	)
+
+	// Airline
+	airlineSvc := airline.NewService(
+		repoFactory.GetAirlineRepository(), // Used repoFactory and new method
+		defaultTimeout,                     // Used defaultTimeout
 	)
 
 	return &ServiceFactory{
@@ -115,5 +123,6 @@ func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client) *ServiceF
 		MawbSvc:                   mawbSvc,
 		CustomerSvc:               customerSvc,
 		DashboardSvc:              dashboardSvc,
+		AirlineSvc:                airlineSvc, // Added initialization
 	}
 }

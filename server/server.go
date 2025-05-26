@@ -16,6 +16,7 @@ import (
 	"github.com/go-chi/render"
 	"github.com/go-pg/pg/v9"
 
+	"hpc-express-service/airline" // Added import
 	"hpc-express-service/constant"
 	"hpc-express-service/factory"
 )
@@ -140,6 +141,10 @@ func New(
 				outboundExpressServiceSvc := outboundExpressHandler{s.svcFactory.OutboundExpressServiceSvc}
 				r.Mount("/express", outboundExpressServiceSvc.router())
 			})
+
+			// Mount airline handler
+			airlineSvc := airlineHandler{s.svcFactory.AirlineSvc}
+			r.Mount("/airlines", airlineSvc.router())
 
 			// authSvc := authHandler{s.svcFactory.AuthSvc}
 			// r.Mount("/manifest", authSvc.router())
@@ -281,4 +286,34 @@ func GetUserUUIDFromContext(r *http.Request) string {
 	}
 
 	return claims["uuid"].(string)
+}
+
+// airlineHandler struct definition
+type airlineHandler struct {
+	svc airline.Service
+}
+
+// router method for airlineHandler
+func (h *airlineHandler) router() chi.Router {
+	r := chi.NewRouter()
+	r.Get("/", h.getAllAirlines) // This will handle GET requests to /v1/airlines
+	return r
+}
+
+// getAllAirlines method for airlineHandler
+func (h *airlineHandler) getAllAirlines(w http.ResponseWriter, r *http.Request) {
+	airlines, err := h.svc.GetAllAirlines(r.Context())
+	if err != nil {
+		// Consider logging the error for server-side tracking
+		// log.Printf("Error fetching airlines: %v", err)
+		render.Render(w, r, ErrInvalidRequest(err)) // Or a more appropriate error like ErrInternal
+		return
+	}
+
+	// The SuccessResponse function should structure the response correctly.
+	// The `airlines` variable already matches the structure of the "data" array.
+	if err := render.Render(w, r, SuccessResponse(airlines, "success")); err != nil {
+		render.Render(w, r, ErrInvalidRequest(err)) // Handle error during rendering
+		return
+	}
 }

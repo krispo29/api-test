@@ -4,6 +4,7 @@ import (
 	"hpc-express-service/auth"
 	"hpc-express-service/common"
 	"hpc-express-service/customer"
+	"hpc-express-service/airline" // Added import
 	"hpc-express-service/dashboard"
 	inbound "hpc-express-service/inbound/express"
 	"hpc-express-service/mawb"
@@ -25,21 +26,28 @@ type RepositoryFactory struct {
 	MawbRepo                      mawb.Repository
 	CustomerRepo                  customer.Repository
 	DashboardRepo                 dashboard.Repository
+	AirlineRepo                   airline.Repository // Added field
 }
 
 func NewRepositoryFactory() *RepositoryFactory {
-	timeoutContext := time.Duration(60) * time.Second
+	defaultTimeout := 5 * time.Second // Changed variable name and value
 
 	return &RepositoryFactory{
-		AuthRepo:                      auth.NewRepository(timeoutContext),
-		CommonRepo:                    common.NewRepository(timeoutContext),
-		InboundExpressRepositoryRepo:  inbound.NewInboundExpressRepository(timeoutContext),
-		TopglsRepo:                    topgls.NewRepository(timeoutContext),
-		UploadlogRepo:                 uploadlog.NewRepository(timeoutContext),
-		OutboundExpressRepositoryRepo: outbound.NewOutboundExpressRepository(timeoutContext),
-		ShopeeRepo:                    shopee.NewRepository(timeoutContext),
-		MawbRepo:                      mawb.NewRepository(timeoutContext),
-		CustomerRepo:                  customer.NewRepository(timeoutContext),
-		DashboardRepo:                 dashboard.NewRepository(timeoutContext),
+		AuthRepo:                      auth.NewRepository(defaultTimeout), // Used defaultTimeout
+		CommonRepo:                    common.NewRepository(defaultTimeout), // Used defaultTimeout
+		InboundExpressRepositoryRepo:  inbound.NewInboundExpressRepository(defaultTimeout), // Used defaultTimeout
+		TopglsRepo:                    topgls.NewRepository(defaultTimeout), // Used defaultTimeout
+		UploadlogRepo:                 uploadlog.NewRepository(defaultTimeout), // Used defaultTimeout
+		OutboundExpressRepositoryRepo: outbound.NewOutboundExpressRepository(defaultTimeout), // Used defaultTimeout
+		ShopeeRepo:                    shopee.NewRepository(defaultTimeout), // Used defaultTimeout
+		MawbRepo:                      mawb.NewRepository(defaultTimeout), // Used defaultTimeout
+		CustomerRepo:                  customer.NewRepository(defaultTimeout), // Used defaultTimeout
+		DashboardRepo:                 dashboard.NewRepository(defaultTimeout), // Used defaultTimeout
+		AirlineRepo:                   airline.NewRepository(defaultTimeout),   // Added initialization
 	}
+}
+
+// GetAirlineRepository returns the airline repository.
+func (r *RepositoryFactory) GetAirlineRepository() airline.Repository {
+	return r.AirlineRepo
 }
