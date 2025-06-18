@@ -1,59 +1,63 @@
 package compare
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
-	// ยังคงใช้ model เดิม
+	"time" // Added for context timeout consistency
+
+	"github.com/go-pg/pg/v9" // Added for go-pg
 )
 
 type ExcelRepositoryInterface interface {
-	GetValuesFromDB(columnName string) ([]string, error)
+	GetValuesFromDB(ctx context.Context, columnName string) ([]string, error)
 }
 
 type excelRepository struct {
-	db *sql.DB
+	contextTimeout time.Duration // Added for consistency
 }
 
-func NewExcelRepository(db *sql.DB) ExcelRepositoryInterface {
-	return &excelRepository{db: db}
+func NewExcelRepository(timeout time.Duration) ExcelRepositoryInterface {
+	return &excelRepository{
+		contextTimeout: timeout,
+	}
 }
 
-func (r *excelRepository) GetValuesFromDB(columnName string) ([]string, error) {
-	var dbValues []string
+func (r *excelRepository) GetValuesFromDB(ctx context.Context, columnName string) ([]string, error) {
+	db := ctx.Value("postgreSQLConn").(*pg.DB)
+	// It's good practice to ensure db is not nil, though in a well-structured app it should always be there.
+	if db == nil {
+		return nil, fmt.Errorf("database connection not found in context")
+	}
 
-	// Basic validation or sanitization for columnName (important for security)
-	// For now, we'll assume columnName is valid and safe.
-	// A more robust solution would be to validate against a list of known columns.
+	ctxQuery, cancel := context.WithTimeout(ctx, r.contextTimeout)
+	defer cancel()
+
 	if columnName == "" {
 		return nil, fmt.Errorf("columnName cannot be empty")
 	}
 
-	// Construct the query safely. Using fmt.Sprintf directly with column names can be risky
-	// if columnName is not validated.
-	// For PostgreSQL, column names can be quoted using double quotes.
-	// For MySQL, column names can be quoted using backticks.
-	// Assuming PostgreSQL for quoting, but this should ideally match the actual DB.
-	// Let's stick to a simple approach and assume the column name doesn't need special quoting for now,
-	// or is already in a format that doesn't conflict with SQL keywords.
-	// A better way would be to check against an allow-list of column names.
-	query := fmt.Sprintf("SELECT %s FROM goods_hs_code", columnName) // simplified for now
+	// IMPORTANT: columnName is used directly in the query.
+	// This is a SQL injection risk if columnName is not validated/sanitized.
+	// For now, proceeding as per previous plan's assumption.
+	// Consider using `?` placeholder for column name if go-pg supports it,
+	// or `pg.Ident` for safe identifier quoting.
+	// query := fmt.Sprintf("SELECT %s FROM goods_hs_code", columnName) // Original approach
+	// Safer with pg.Ident if columnName is simple:
+	query := fmt.Sprintf("SELECT %s FROM goods_hs_code", pg.Ident(columnName))
 
-	rows, err := r.db.Query(query) // Be cautious with dynamic table/column names
+
+	var dbValues []string
+	// Using db.ModelContext for selecting into a slice of strings from a single column
+	// might be tricky. A raw query is often simpler for this specific case.
+	// Let's try with a simple query execution that scans results.
+	// The most direct way with go-pg to get a slice of single values from a query
+	// is often to query into a slice of structs and then extract, or use a simpler model.
+	// However, for a single column of strings:
+	_, err := db.QueryContext(ctxQuery, pg.Scan(&dbValues), query)
+
 	if err != nil {
+		// Check for pg.ErrNoRows specifically if needed, though QueryContext might not return it for scans into slices.
 		return nil, fmt.Errorf("failed to query database for column %s: %w", columnName, err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var val string
-		if err := rows.Scan(&val); err != nil {
-			return nil, fmt.Errorf("failed to scan row from database for column %s: %w", columnName, err)
-		}
-		dbValues = append(dbValues, val)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating database rows for column %s: %w", columnName, err)
 	}
 
 	return dbValues, nil

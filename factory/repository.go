@@ -3,6 +3,7 @@ package factory
 import (
 	"hpc-express-service/auth"
 	"hpc-express-service/common"
+	"hpc-express-service/compare"
 	"hpc-express-service/customer"
 	"hpc-express-service/dashboard"
 	inbound "hpc-express-service/inbound/express"
@@ -20,6 +21,7 @@ import (
 type RepositoryFactory struct {
 	AuthRepo                      auth.Repository
 	CommonRepo                    common.Repository
+	CompareRepo                   compare.ExcelRepositoryInterface // Added
 	InboundExpressRepositoryRepo  inbound.InboundExpressRepository
 	Ship2cuRepo                   ship2cu.Repository
 	UploadlogRepo                 uploadlog.Repository
@@ -49,6 +51,7 @@ func NewRepositoryFactory() *RepositoryFactory {
 		CustomerRepo:                  customer.NewRepository(timeoutContext),
 		DashboardRepo:                 dashboard.NewRepository(timeoutContext),
 		UserRepo:                      user.NewRepository(timeoutContext),
+		CompareRepo:                   compare.NewExcelRepository(timeoutContext), // Added
 		SettingRepo:                   setting.NewRepository(timeoutContext),
 	}
 }
