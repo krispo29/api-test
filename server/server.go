@@ -141,12 +141,11 @@ func New(
 			// (though our previous step should ensure it is)
 			if compareService != nil { // Optional: defensive check
 				compareApiHandler := NewExcelHandler(compareService) // Create the handler
-				r.Post("/compare", compareApiHandler.CompareExcel)    // Mount the POST route
+				r.Post("/compare", compareApiHandler.CompareExcel)   // Mount the POST route
 			} else {
 				// Log or handle the case where compareService is unexpectedly nil
 				log.Println("Warning: CompareService not initialized, /v1/compare route not mounted.")
 			}
-
 			// r.Mount("/inbound", manifestSvc.router())
 
 			r.Route("/inbound", func(r chi.Router) {

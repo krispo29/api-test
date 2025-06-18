@@ -21,7 +21,7 @@ import (
 type RepositoryFactory struct {
 	AuthRepo                      auth.Repository
 	CommonRepo                    common.Repository
-	CompareRepo                   compare.ExcelRepositoryInterface // Added
+	CompareRepo                   compare.ExcelRepositoryInterface
 	InboundExpressRepositoryRepo  inbound.InboundExpressRepository
 	Ship2cuRepo                   ship2cu.Repository
 	UploadlogRepo                 uploadlog.Repository
@@ -51,7 +51,7 @@ func NewRepositoryFactory() *RepositoryFactory {
 		CustomerRepo:                  customer.NewRepository(timeoutContext),
 		DashboardRepo:                 dashboard.NewRepository(timeoutContext),
 		UserRepo:                      user.NewRepository(timeoutContext),
-		CompareRepo:                   compare.NewExcelRepository(timeoutContext), // Added
+		CompareRepo:                   compare.NewExcelRepository(timeoutContext),
 		SettingRepo:                   setting.NewRepository(timeoutContext),
 	}
 }

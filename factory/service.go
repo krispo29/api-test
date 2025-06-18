@@ -24,7 +24,7 @@ import (
 type ServiceFactory struct {
 	AuthSvc                   auth.Service
 	CommonSvc                 common.Service
-	CompareSvc                compare.ExcelServiceInterface // Added
+	CompareSvc                compare.ExcelServiceInterface
 	InboundExpressServiceSvc  inbound.InboundExpressService
 	Ship2cuSvc                ship2cu.Service
 	UploadlogSvc              uploadlog.Service
@@ -39,7 +39,7 @@ type ServiceFactory struct {
 }
 
 func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client, conf *config.Config) *ServiceFactory {
-	// timeoutContext := time.Duration(60) * time.Second // Already defined in repository factory, service might use its own or reuse if passed
+	timeoutContext := time.Duration(60) * time.Second
 
 	/*
 	* Sharing Services
@@ -90,10 +90,8 @@ func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client, conf *con
 	/*
 	* Sharing Services
 	 */
-
 	// Compare Service
-	compareSvc := compare.NewExcelService(repo.CompareRepo) // Added
-
+	compareSvc := compare.NewExcelService(repo.CompareRepo)
 	// Auth
 	authSvc := auth.NewService(
 		repo.AuthRepo,
@@ -150,7 +148,7 @@ func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client, conf *con
 		CustomerSvc:               customerSvc,
 		DashboardSvc:              dashboardSvc,
 		UserSvc:                   userSvc,
-		CompareSvc:                compareSvc, // Added
+		CompareSvc:                compareSvc,
 		SettingSvc:                settingSvc,
 	}
 }

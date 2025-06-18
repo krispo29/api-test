@@ -45,7 +45,6 @@ func (r *excelRepository) GetValuesFromDB(ctx context.Context, columnName string
 	// Safer with pg.Ident if columnName is simple:
 	query := fmt.Sprintf("SELECT %s FROM goods_hs_code", pg.Ident(columnName))
 
-
 	var dbValues []string
 	// Using db.ModelContext for selecting into a slice of strings from a single column
 	// might be tricky. A raw query is often simpler for this specific case.
