@@ -135,17 +135,14 @@ func New(
 			settingSvc := settingHandler{s.svcFactory.SettingSvc}
 			r.Mount("/settings", settingSvc.router())
 
-			// Compare API Route
-			compareService := s.svcFactory.CompareSvc // Get the service from the factory
-			// Ensure compareService is not nil if ServiceFactory might not always initialize it
-			// (though our previous step should ensure it is)
-			if compareService != nil { // Optional: defensive check
-				compareApiHandler := NewExcelHandler(compareService) // Create the handler
-				r.Post("/compare", compareApiHandler.CompareExcel)   // Mount the POST route
+			compareService := s.svcFactory.CompareSvc
+			if compareService != nil {
+				compareApiHandler := NewExcelHandler(compareService)
+				r.Post("/compare", compareApiHandler.CompareExcel)
 			} else {
-				// Log or handle the case where compareService is unexpectedly nil
 				log.Println("Warning: CompareService not initialized, /v1/compare route not mounted.")
 			}
+
 			// r.Mount("/inbound", manifestSvc.router())
 
 			r.Route("/inbound", func(r chi.Router) {

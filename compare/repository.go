@@ -3,9 +3,11 @@ package compare
 import (
 	"context"
 	"fmt"
-	"time" // Added for context timeout consistency
+	"time"
 
-	"github.com/go-pg/pg/v9" // Added for go-pg
+	"log"
+
+	"github.com/go-pg/pg/v9"
 )
 
 type ExcelRepositoryInterface interface {
@@ -13,7 +15,7 @@ type ExcelRepositoryInterface interface {
 }
 
 type excelRepository struct {
-	contextTimeout time.Duration // Added for consistency
+	contextTimeout time.Duration
 }
 
 func NewExcelRepository(timeout time.Duration) ExcelRepositoryInterface {
@@ -24,10 +26,11 @@ func NewExcelRepository(timeout time.Duration) ExcelRepositoryInterface {
 
 func (r *excelRepository) GetValuesFromDB(ctx context.Context, columnName string) ([]string, error) {
 	db := ctx.Value("postgreSQLConn").(*pg.DB)
-	// It's good practice to ensure db is not nil, though in a well-structured app it should always be there.
 	if db == nil {
 		return nil, fmt.Errorf("database connection not found in context")
 	}
+
+	log.Printf("Connected to database: %s", db.Options().Database)
 
 	ctxQuery, cancel := context.WithTimeout(ctx, r.contextTimeout)
 	defer cancel()
@@ -36,28 +39,26 @@ func (r *excelRepository) GetValuesFromDB(ctx context.Context, columnName string
 		return nil, fmt.Errorf("columnName cannot be empty")
 	}
 
-	// IMPORTANT: columnName is used directly in the query.
-	// This is a SQL injection risk if columnName is not validated/sanitized.
-	// For now, proceeding as per previous plan's assumption.
-	// Consider using `?` placeholder for column name if go-pg supports it,
-	// or `pg.Ident` for safe identifier quoting.
-	// query := fmt.Sprintf("SELECT %s FROM goods_hs_code", columnName) // Original approach
-	// Safer with pg.Ident if columnName is simple:
-	query := fmt.Sprintf("SELECT %s tbl_compare_goods", pg.Ident(columnName))
+	// Map allowed column names to ensure correct matching
+	allowedColumns := map[string]string{
+		"goods_en": "goods_en",
+		"hs_code":  "hs_code",
+	}
+	mappedColumn, ok := allowedColumns[columnName]
+	if !ok {
+		return nil, fmt.Errorf("invalid column name: %s", columnName)
+	}
+
+	query := fmt.Sprintf("SELECT %s FROM public.tbl_compare_goods WHERE %s IS NOT NULL AND %s != ''", pg.Ident(mappedColumn), pg.Ident(mappedColumn), pg.Ident(mappedColumn))
+	log.Printf("Executing query: %s", query)
 
 	var dbValues []string
-	// Using db.ModelContext for selecting into a slice of strings from a single column
-	// might be tricky. A raw query is often simpler for this specific case.
-	// Let's try with a simple query execution that scans results.
-	// The most direct way with go-pg to get a slice of single values from a query
-	// is often to query into a slice of structs and then extract, or use a simpler model.
-	// However, for a single column of strings:
-	_, err := db.QueryContext(ctxQuery, pg.Scan(&dbValues), query)
-
+	_, err := db.WithContext(ctxQuery).Query(&dbValues, query)
 	if err != nil {
-		// Check for pg.ErrNoRows specifically if needed, though QueryContext might not return it for scans into slices.
+		log.Printf("Query failed: %v", err)
 		return nil, fmt.Errorf("failed to query database for column %s: %w", columnName, err)
 	}
 
+	log.Printf("Retrieved values: %+v", dbValues)
 	return dbValues, nil
 }
