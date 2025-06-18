@@ -5,44 +5,57 @@ import (
 
 	"hpc-express-service/auth"
 	"hpc-express-service/common"
+	"hpc-express-service/config"
 	"hpc-express-service/customer"
 	"hpc-express-service/dashboard"
 	"hpc-express-service/gcs"
 	inbound "hpc-express-service/inbound/express"
 	"hpc-express-service/mawb"
-	outbound "hpc-express-service/outbound/express"
+	outboundExpress "hpc-express-service/outbound/express"
+	outboundMawb "hpc-express-service/outbound/mawb"
+	"hpc-express-service/setting"
+	"hpc-express-service/ship2cu"
 	"hpc-express-service/shopee"
-	"hpc-express-service/topgls"
 	"hpc-express-service/uploadlog"
+	"hpc-express-service/user"
 )
 
 type ServiceFactory struct {
 	AuthSvc                   auth.Service
 	CommonSvc                 common.Service
 	InboundExpressServiceSvc  inbound.InboundExpressService
-	TopglsSvc                 topgls.Service
+	Ship2cuSvc                ship2cu.Service
 	UploadlogSvc              uploadlog.Service
-	OutboundExpressServiceSvc outbound.OutboundExpressService
+	OutboundExpressServiceSvc outboundExpress.OutboundExpressService
+	OutboundMawbServiceSvc    outboundMawb.OutboundMawbService
 	ShopeeSvc                 shopee.Service
 	MawbSvc                   mawb.Service
 	CustomerSvc               customer.Service
 	DashboardSvc              dashboard.Service
+	UserSvc                   user.Service
+	SettingSvc                setting.Service
 }
 
-func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client) *ServiceFactory {
+func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client, conf *config.Config) *ServiceFactory {
 	timeoutContext := time.Duration(60) * time.Second
 
 	/*
 	* Sharing Services
 	 */
 
-	// TOPGLS
-	topglsSvc := topgls.NewService(
-		repo.TopglsRepo,
+	// setting
+	settingSvc := setting.NewService(
+		repo.SettingRepo,
 		timeoutContext,
 	)
 
-	// TOPGLS
+	// Ship2cu
+	ship2cuSvc := ship2cu.NewService(
+		repo.Ship2cuRepo,
+		timeoutContext,
+	)
+
+	// Shopee
 	shopeeSvc := shopee.NewService(
 		repo.ShopeeRepo,
 		timeoutContext,
@@ -64,6 +77,12 @@ func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client) *ServiceF
 	// Customer
 	customerSvc := customer.NewService(
 		repo.CustomerRepo,
+		timeoutContext,
+	)
+
+	// User
+	userSvc := user.NewService(
+		repo.UserRepo,
 		timeoutContext,
 	)
 	/*
@@ -92,28 +111,40 @@ func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client) *ServiceF
 	inboundExpressServiceSvc := inbound.NewInboundExpressService(
 		repo.InboundExpressRepositoryRepo,
 		timeoutContext,
-		topglsSvc,
+		ship2cuSvc,
 		uploadlogSvc,
+		repo.Ship2cuRepo,
 	)
 
 	// Outbound Express
-	outboundExpressServiceSvc := outbound.NewOutboundExpressService(
+	outboundExpressServiceSvc := outboundExpress.NewOutboundExpressService(
 		repo.OutboundExpressRepositoryRepo,
 		timeoutContext,
 		shopeeSvc,
 		uploadlogSvc,
 	)
 
+	// Outbound Mawb
+	outboundMawbServiceSvc := outboundMawb.NewOutboundMawbService(
+		repo.OutboundMawbRepositoryRepo,
+		timeoutContext,
+		gcsClient,
+		conf,
+	)
+
 	return &ServiceFactory{
 		AuthSvc:                   authSvc,
 		CommonSvc:                 commonSvc,
 		InboundExpressServiceSvc:  inboundExpressServiceSvc,
-		TopglsSvc:                 topglsSvc,
+		Ship2cuSvc:                ship2cuSvc,
 		UploadlogSvc:              uploadlogSvc,
 		OutboundExpressServiceSvc: outboundExpressServiceSvc,
+		OutboundMawbServiceSvc:    outboundMawbServiceSvc,
 		ShopeeSvc:                 shopeeSvc,
 		MawbSvc:                   mawbSvc,
 		CustomerSvc:               customerSvc,
 		DashboardSvc:              dashboardSvc,
+		UserSvc:                   userSvc,
+		SettingSvc:                settingSvc,
 	}
 }

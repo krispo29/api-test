@@ -42,6 +42,7 @@ func (r repository) Get(ctx context.Context, uuid string) (*GetUploadloggingMode
 		&x.Category,
 		&x.Status,
 		&x.Amount,
+		&x.Remark,
 		&x.Creator,
 		&x.CreatedAt,
 		&x.UpdatedAt,
@@ -55,6 +56,7 @@ func (r repository) Get(ctx context.Context, uuid string) (*GetUploadloggingMode
 			ul.category,
 			ul.status,
 			ul.amount,
+			ul.remark,
 			u.username as creator,
 			TO_CHAR(ul.created_at at time zone 'utc' at time zone 'Asia/bangkok', 'DD-MM-YYYY HH24:MI:SS') AS created_at,
 			TO_CHAR(ul.updated_at at time zone 'utc' at time zone 'Asia/bangkok', 'DD-MM-YYYY HH24:MI:SS') AS updated_at
@@ -86,9 +88,10 @@ func (r repository) GetAllUploadloggingsByCategoryAndSubCategory(ctx context.Con
 				 tul.category,
 				 tul.status,
 				 tul.amount,
+				 tul.remark,
 				TO_CHAR(tul.created_at at time zone 'utc' at time zone 'Asia/bangkok', 'DD-MM-YYYY HH24:MI:SS') AS created_at,
 				TO_CHAR(tul.updated_at at time zone 'utc' at time zone 'Asia/bangkok', 'DD-MM-YYYY HH24:MI:SS') AS updated_at
-			FROM tbl_upload_loggings tul
+			FROM public.tbl_upload_loggings tul
 			WHERE (tul.created_at)::date BETWEEN SYMMETRIC $1 AND $2
 		`
 
@@ -171,13 +174,14 @@ func (r repository) Update(ctx context.Context, data *UpdateModel) error {
 	result, err := db.ExecOneContext(ctx,
 		`
 			UPDATE public.tbl_upload_loggings
-				SET  mawb=?1, status=?2, amount=?3, updated_at=NOW()
+				SET  mawb=?1, status=?2, amount=?3, remark=?4, updated_at=NOW()
 			WHERE "uuid" = ?0;
 		`,
 		data.UUID,
 		data.Mawb,
 		data.Status,
 		data.Amount,
+		data.Remark,
 	)
 
 	if err != nil {

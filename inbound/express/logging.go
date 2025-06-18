@@ -69,3 +69,27 @@ func (s *loggingService) UploadUpdateRawPreImport(ctx context.Context, userUUID,
 	}(time.Now())
 	return s.next.UploadUpdateRawPreImport(ctx, userUUID, originName, fileBytes)
 }
+
+func (s *loggingService) GetOneByUploaddingUUID(ctx context.Context, uploadLoggingUUID string) (result *GetPreImportManifestModel, err error) {
+	defer func(begin time.Time) {
+		s.logger.Log(
+			"method", "get_one_by_upload_uuid",
+			"upload_uuid", uploadLoggingUUID,
+			"took", time.Since(begin),
+			"err", err,
+		)
+	}(time.Now())
+	return s.next.GetOneByUploaddingUUID(ctx, uploadLoggingUUID)
+}
+
+func (s *loggingService) GetSummaryByUploaddingUUID(ctx context.Context, uploadLoggingUUID string) (result *UploadSummaryModel, err error) {
+	defer func(begin time.Time) {
+		s.logger.Log(
+			"method", "get_summary",
+			"upload_uuid", uploadLoggingUUID,
+			"took", time.Since(begin),
+			"err", err,
+		)
+	}(time.Now())
+	return s.next.GetSummaryByUploaddingUUID(ctx, uploadLoggingUUID)
+}

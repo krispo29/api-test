@@ -36,8 +36,8 @@ func (r repository) GetAllExchangeRates(ctx context.Context) ([]*GetExchangeRate
 			cxr.country_name,
 			cxr.currency_code,
 			cxr.currency_name,
-			cxr.import_exchange_rate,
-			cxr.export_exchange_rate,
+			cxr.import_exchange_rate / cxr.ratio as import_exchange_rate,
+			cxr.export_exchange_rate / cxr.ratio as export_exchange_rate,
 			cxr.is_enabled,
 			to_char(cxr.created_at at time zone 'utc' at time zone 'Asia/Bangkok', 'DD-MM-YYYY HH24:MI:SS') AS created_at,
 			to_char(cxr.updated_at at time zone 'utc' at time zone 'Asia/Bangkok', 'DD-MM-YYYY HH24:MI:SS') AS updated_at

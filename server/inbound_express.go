@@ -20,10 +20,17 @@ func (h *inboundExpressHandler) router() chi.Router {
 
 	r := chi.NewRouter()
 
-	r.Post("/upload", h.uploadManifest)
-	r.Get("/download/pre-import", h.downloadPreImport)
-	r.Get("/download/raw-pre-import", h.downloadRawPreImport)
 	r.Post("/upload-update-manifest", h.uploadUpdateManifest)
+	r.Route("/upload", func(r chi.Router) {
+		r.Post("/", h.uploadManifest)
+		r.Get("/{uploadLoggingUUID}/summary", h.getSummary)
+		r.Get("/{uploadLoggingUUID}", h.getManifest)
+	})
+
+	r.Route("/download", func(r chi.Router) {
+		r.Get("/pre-import", h.downloadPreImport)
+		r.Get("/raw-pre-import", h.downloadRawPreImport)
+	})
 
 	return r
 }
@@ -145,4 +152,38 @@ func (h *inboundExpressHandler) uploadUpdateManifest(w http.ResponseWriter, r *h
 	}
 
 	render.Respond(w, r, SuccessResponse(nil, "success"))
+}
+
+func (h *inboundExpressHandler) getManifest(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	uploadLoggingUUID := chi.URLParam(r, "uploadLoggingUUID")
+
+	result, err := h.s.GetOneByUploaddingUUID(r.Context(), uploadLoggingUUID)
+	if err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
+		return
+	}
+
+	render.Respond(w, r, SuccessResponse(result, "success"))
+}
+
+func (h *inboundExpressHandler) getSummary(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	uploadLoggingUUID := chi.URLParam(r, "uploadLoggingUUID")
+
+	result, err := h.s.GetSummaryByUploaddingUUID(r.Context(), uploadLoggingUUID)
+	if err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
+		return
+	}
+
+	render.Respond(w, r, SuccessResponse(result, "success"))
 }

@@ -13,7 +13,7 @@ import (
 
 	"github.com/xuri/excelize/v2"
 
-	"hpc-express-service/topgls"
+	"hpc-express-service/ship2cu"
 	"hpc-express-service/uploadlog"
 	"hpc-express-service/utils"
 )
@@ -23,26 +23,31 @@ type InboundExpressService interface {
 	DownloadPreImport(ctx context.Context, uploadLoggingUUID string) (string, *bytes.Buffer, error)
 	DownloadRawPreImport(ctx context.Context, uploadLoggingUUID string) (string, *bytes.Buffer, error)
 	UploadUpdateRawPreImport(ctx context.Context, userUUID, originName string, fileBytes []byte) error
+	GetOneByUploaddingUUID(ctx context.Context, uploadLoggingUUID string) (*GetPreImportManifestModel, error)
+	GetSummaryByUploaddingUUID(ctx context.Context, uploadLoggingUUID string) (*UploadSummaryModel, error)
 }
 
 type service struct {
 	selfRepo       InboundExpressRepository
 	contextTimeout time.Duration
-	topglsSvc      topgls.Service
+	ship2cuSvc     ship2cu.Service
 	uploadlogSvc   uploadlog.Service
+	ship2cuRepo    ship2cu.Repository
 }
 
 func NewInboundExpressService(
 	selfRepo InboundExpressRepository,
 	timeout time.Duration,
-	topglsSvc topgls.Service,
+	ship2cuSvc ship2cu.Service,
 	uploadlogSvc uploadlog.Service,
+	ship2cuRepo ship2cu.Repository,
 ) InboundExpressService {
 	return &service{
 		selfRepo:       selfRepo,
 		contextTimeout: timeout,
-		topglsSvc:      topglsSvc,
+		ship2cuSvc:     ship2cuSvc,
 		uploadlogSvc:   uploadlogSvc,
+		ship2cuRepo:    ship2cuRepo,
 	}
 }
 
@@ -50,7 +55,7 @@ func (s *service) UploadManifest(ctx context.Context, userUUID, originName, temp
 	ctx, cancel := context.WithTimeout(ctx, s.contextTimeout)
 	defer cancel()
 
-	if templateCode == "TOPGLS" {
+	if templateCode == "SHIP2CU" {
 		// Logging and Upload to GCS
 		uploadLogUUID, err := s.uploadlogSvc.UploadLogFile(ctx, &uploadlog.UploadFileModel{
 			// Mawb:         "", // TODO:
@@ -67,23 +72,25 @@ func (s *service) UploadManifest(ctx context.Context, userUUID, originName, temp
 		}
 
 		// Insert Manifest
-		resultUpload, err := s.topglsSvc.UploadPreImportManifests(ctx, uploadLogUUID, fileBytes)
+		resultUpload, err := s.ship2cuSvc.UploadPreImportManifests(ctx, uploadLogUUID, fileBytes)
 		if err != nil {
-			return err
-		}
-
-		// Update Logging
-		for _, v := range resultUpload {
-			err := s.uploadlogSvc.Update(ctx, &uploadlog.UpdateModel{
+			s.uploadlogSvc.Update(ctx, &uploadlog.UpdateModel{
 				UUID:   uploadLogUUID,
-				Mawb:   v.Mawb,
-				Amount: v.Amount,
+				Mawb:   "",
+				Amount: 0,
+				Status: "failed",
+				Remark: err.Error(),
+			})
+			return err
+		} else {
+			s.uploadlogSvc.Update(ctx, &uploadlog.UpdateModel{
+				UUID:   uploadLogUUID,
+				Mawb:   resultUpload.Mawb,
+				Amount: resultUpload.Amount,
 				Status: "success",
 			})
-			if err != nil {
-				log.Println(err)
-			}
 		}
+		// }
 	} else {
 		return errors.New("not found template")
 	}
@@ -157,7 +164,7 @@ func (s *service) DownloadPreImport(ctx context.Context, uploadLoggingUUID strin
 		startRow := 6
 
 		f.SetCellValue(sheetName, fmt.Sprintf("%s%d", "A", startRow-1), 1)
-		f.SetCellValue(sheetName, fmt.Sprintf("%s%d", "B", startRow-1), preImportData.VasselName)
+		f.SetCellValue(sheetName, fmt.Sprintf("%s%d", "B", startRow-1), preImportData.DischargePort)
 		f.SetCellValue(sheetName, fmt.Sprintf("%s%d", "C", startRow-1), preImportData.VasselName)
 		f.SetCellValue(sheetName, fmt.Sprintf("%s%d", "D", startRow-1), preImportData.ArrivalDate)
 		for i := 0; i < len(chunk)*2; i = i + 2 {
@@ -520,4 +527,57 @@ func (s *service) UploadUpdateRawPreImport(ctx context.Context, userUUID, origin
 	}
 
 	return nil
+}
+
+func (s *service) GetOneByUploaddingUUID(ctx context.Context, uploadLoggingUUID string) (*GetPreImportManifestModel, error) {
+	ctx, cancel := context.WithTimeout(ctx, s.contextTimeout)
+	defer cancel()
+
+	result, err := s.selfRepo.GetAllManifestToPreImport(ctx, uploadLoggingUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Println(len(result.Details))
+	return result, nil
+}
+
+func (s *service) GetSummaryByUploaddingUUID(ctx context.Context, uploadLoggingUUID string) (*UploadSummaryModel, error) {
+	ctx, cancel := context.WithTimeout(ctx, s.contextTimeout)
+	defer cancel()
+
+	list, err := s.selfRepo.GetSummaryByUploaddingUUID(ctx, uploadLoggingUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &UploadSummaryModel{}
+	cat2 := &CatogorySummaryModel{Category: "2"}
+	cat3 := &CatogorySummaryModel{Category: "3"}
+	otherCatogory := &CatogorySummaryModel{Category: "other"}
+	for _, v := range list {
+		if v.Category == "2" {
+			cat2.Total++
+			cat2.Vat += v.Vat
+		} else if v.Category == "3" {
+			cat3.Total++
+			cat3.Vat += v.Vat
+			cat3.Duty += v.Duty
+			cat3.DutyAndVat += (v.Duty + v.Vat)
+
+		} else {
+			otherCatogory.Total++
+			otherCatogory.Vat += v.Vat
+			otherCatogory.Duty += v.Duty
+			otherCatogory.DutyAndVat += (v.Duty + v.Vat)
+		}
+	}
+
+	result.Catogory2 = cat2
+	result.Catogory3 = cat3
+	result.OtherCatogory = otherCatogory
+	result.TotalTax = cat2.Vat + cat3.DutyAndVat
+	result.TotalHawb = cat2.Total + cat3.Total + otherCatogory.Total
+
+	return result, nil
 }

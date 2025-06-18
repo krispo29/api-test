@@ -44,6 +44,7 @@ func (s *service) Get(ctx context.Context, uuid string) (*GetUploadloggingModel,
 	if err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 

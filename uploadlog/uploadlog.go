@@ -9,6 +9,7 @@ type GetUploadloggingModel struct {
 	Category     string `json:"category"`
 	Status       string `json:"status"`
 	Amount       int64  `json:"amount"`
+	Remark       string `json:"remark"`
 	Creator      string `json:"creator"`
 	CreatedAt    string `json:"createdAt"`
 	UpdatedAt    string `json:"updatedAt"`
@@ -42,4 +43,5 @@ type UpdateModel struct {
 	Mawb   string
 	Amount int64
 	Status string
+	Remark string
 }

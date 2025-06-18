@@ -7,10 +7,13 @@ import (
 	"hpc-express-service/dashboard"
 	inbound "hpc-express-service/inbound/express"
 	"hpc-express-service/mawb"
-	outbound "hpc-express-service/outbound/express"
+	outboundExpress "hpc-express-service/outbound/express"
+	outboundMawb "hpc-express-service/outbound/mawb"
+	"hpc-express-service/setting"
+	"hpc-express-service/ship2cu"
 	"hpc-express-service/shopee"
-	"hpc-express-service/topgls"
 	"hpc-express-service/uploadlog"
+	"hpc-express-service/user"
 	"time"
 )
 
@@ -18,13 +21,16 @@ type RepositoryFactory struct {
 	AuthRepo                      auth.Repository
 	CommonRepo                    common.Repository
 	InboundExpressRepositoryRepo  inbound.InboundExpressRepository
-	TopglsRepo                    topgls.Repository
+	Ship2cuRepo                   ship2cu.Repository
 	UploadlogRepo                 uploadlog.Repository
-	OutboundExpressRepositoryRepo outbound.OutboundExpressRepository
+	OutboundExpressRepositoryRepo outboundExpress.OutboundExpressRepository
+	OutboundMawbRepositoryRepo    outboundMawb.OutboundMawbRepository
 	ShopeeRepo                    shopee.Repository
 	MawbRepo                      mawb.Repository
 	CustomerRepo                  customer.Repository
 	DashboardRepo                 dashboard.Repository
+	UserRepo                      user.Repository
+	SettingRepo                   setting.Repository
 }
 
 func NewRepositoryFactory() *RepositoryFactory {
@@ -34,12 +40,15 @@ func NewRepositoryFactory() *RepositoryFactory {
 		AuthRepo:                      auth.NewRepository(timeoutContext),
 		CommonRepo:                    common.NewRepository(timeoutContext),
 		InboundExpressRepositoryRepo:  inbound.NewInboundExpressRepository(timeoutContext),
-		TopglsRepo:                    topgls.NewRepository(timeoutContext),
+		Ship2cuRepo:                   ship2cu.NewRepository(timeoutContext),
 		UploadlogRepo:                 uploadlog.NewRepository(timeoutContext),
-		OutboundExpressRepositoryRepo: outbound.NewOutboundExpressRepository(timeoutContext),
+		OutboundExpressRepositoryRepo: outboundExpress.NewOutboundExpressRepository(timeoutContext),
+		OutboundMawbRepositoryRepo:    outboundMawb.NewOutboundMawbRepository(timeoutContext),
 		ShopeeRepo:                    shopee.NewRepository(timeoutContext),
 		MawbRepo:                      mawb.NewRepository(timeoutContext),
 		CustomerRepo:                  customer.NewRepository(timeoutContext),
 		DashboardRepo:                 dashboard.NewRepository(timeoutContext),
+		UserRepo:                      user.NewRepository(timeoutContext),
+		SettingRepo:                   setting.NewRepository(timeoutContext),
 	}
 }

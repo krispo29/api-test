@@ -65,7 +65,7 @@ func main() {
 	/*
 		Services Factory
 	*/
-	svcFactory := factory.NewServiceFactory(repoFactory, _gcs)
+	svcFactory := factory.NewServiceFactory(repoFactory, _gcs, config)
 
 	/*
 		Logging Factory

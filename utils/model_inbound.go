@@ -1,12 +1,14 @@
 package utils
 
 type InsertPreImportHeaderManifestModel struct {
-	UploadLoggingUUID string
-	DischargePort     string
-	VasselName        string
-	ArrivalDate       string
-	CustomerName      string
-	Details           []*InsertPreImportDetailManifestModel
+	UploadLoggingUUID  string
+	DischargePort      string
+	VasselName         string
+	ArrivalDate        string
+	CustomerName       string
+	OriginCountryCode  string
+	OriginCurrencyCode string
+	Details            []*InsertPreImportDetailManifestModel
 }
 
 type InsertPreImportDetailManifestModel struct {

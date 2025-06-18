@@ -12,6 +12,7 @@ type InboundExpressRepository interface {
 	// GetMawbByTimstamp(ctx context.Context, timestamp string) (*utils.GetMawb, error)
 	GetAllManifestToPreImport(ctx context.Context, uploadLoggingUUID string) (*GetPreImportManifestModel, error)
 	UpdatePreImportManifestDetail(ctx context.Context, data []*UpdatePreImportManifestDetailModel) error
+	GetSummaryByUploaddingUUID(ctx context.Context, uploadLoggingUUID string) ([]*GetSummaryModel, error)
 }
 
 type repository struct {
@@ -94,60 +95,74 @@ func (r repository) GetAllManifestToPreImport(ctx context.Context, uploadLogging
 	}
 
 	stmt, err := db.Prepare(`
-		SELECT
-			uuid,
-			master_air_waybill,
-			house_air_waybill,
-			category,
-			consignee_tax,
-			consignee_branch,
-			consignee_name,
-			consignee_address,
-			consignee_district,
-			consignee_subprovince,
-			consignee_province,
-			consignee_postcode,
-			consignee_country_code,
-			consignee_email,
-			consignee_phone_number,
-			shipper_name,
-			shipper_address,
-			shipper_district,
-			shipper_subprovince,
-			shipper_province,
-			shipper_postcode,
-			shipper_country_code,
-			shipper_email,
-			shipper_phone_number,
-			tariff_code,
-			tariff_sequence,
-			statistical_code,
-			english_description_of_good,
-			thai_description_of_good,
-			quantity,
-			quantity_unit_code,
-			net_weight,
-			net_weight_unit_code,
-			gross_weight,
-			gross_weight_unit_code,
-			package,
-			package_unit_code,
-			cif_value_foreign,
-			fob_value_foreign,
-			exchange_rate,
-			currency_code,
-			shipping_mark,
-			consignment_country,
-			freight_value_foreign,
-			freight_currency_code,
-			insurance_value_foreign,
-			insurance_currency_code,
-			other_charge_value_foreign,
-			other_charge_currency_code,
-			invoice_no,
-			invoice_date
-		FROM public.tbl_pre_import_manifest_details
-		WHERE header_uuid = $1
+		SELECT DISTINCT
+			tpimd.uuid,
+			tpimd.master_air_waybill,
+			tpimd.house_air_waybill,
+			tpimd.category,
+			tpimd.consignee_tax,
+			tpimd.consignee_branch,
+			tpimd.consignee_name,
+			tpimd.consignee_address,
+			tpimd.consignee_district,
+			tpimd.consignee_subprovince,
+			tpimd.consignee_province,
+			tpimd.consignee_postcode,
+			tpimd.consignee_country_code,
+			tpimd.consignee_email,
+			tpimd.consignee_phone_number,
+			tpimd.shipper_name,
+			tpimd.shipper_address,
+			tpimd.shipper_district,
+			tpimd.shipper_subprovince,
+			tpimd.shipper_province,
+			tpimd.shipper_postcode,
+			tpimd.shipper_country_code,
+			tpimd.shipper_email,
+			tpimd.shipper_phone_number,
+			tpimd.tariff_code,
+			tpimd.tariff_sequence,
+			tpimd.statistical_code,
+			tpimd.english_description_of_good,
+			tpimd.thai_description_of_good,
+			tpimd.quantity,
+			tpimd.quantity_unit_code,
+			tpimd.net_weight,
+			tpimd.net_weight_unit_code,
+			tpimd.gross_weight,
+			tpimd.gross_weight_unit_code,
+			tpimd.package,
+			tpimd.package_unit_code,
+			tpimd.cif_value_foreign,
+			tpimd.fob_value_foreign,
+			tpimd.exchange_rate,
+			tpimd.currency_code,
+			tpimd.shipping_mark,
+			tpimd.consignment_country,
+			tpimd.freight_value_foreign,
+			tpimd.freight_currency_code,
+			tpimd.insurance_value_foreign,
+			tpimd.insurance_currency_code,
+			tpimd.other_charge_value_foreign,
+			tpimd.other_charge_currency_code,
+			tpimd.invoice_no,
+			tpimd.invoice_date,
+			tpimd.created_at,
+			tpimd.updated_at,
+				tpimd.cif_value_foreign*0.07 as vat,
+				tpimd.cif_value_foreign*(mhcv.duty_rate/100) as duty,
+				CASE
+						WHEN mhcv.duty_rate is NULL THEN FALSE
+						ELSE TRUE
+				end as is_goods_matched
+		FROM public.tbl_pre_import_manifest_details tpimd
+		LEFT JOIN LATERAL (
+		    SELECT duty_rate
+		    FROM master_hs_code_v2
+		    WHERE TRIM(UPPER(goods_en)) = TRIM(UPPER(tpimd.english_description_of_good))
+		    LIMIT 1
+		) mhcv ON true
+		WHERE tpimd.header_uuid = $1
 	`)
 	if err != nil {
 		return nil, err
@@ -205,7 +220,7 @@ func (r repository) UpdatePreImportManifestDetail(ctx context.Context, data []*U
 		gross_weight_unit_code = c.gross_weight_unit_code::text,
 		package = c.package::text,
 		package_unit_code = c.package_unit_code::text,
-		cif_value_foreign = c.cif_value_foreign::text,
+		cif_value_foreign = c.cif_value_foreign::float,
 		fob_value_foreign = c.fob_value_foreign::float,
 		exchange_rate = c.exchange_rate::float,
 		currency_code = c.currency_code::text,
@@ -224,7 +239,7 @@ func (r repository) UpdatePreImportManifestDetail(ctx context.Context, data []*U
 	`
 	vals := []interface{}{}
 	for _, row := range data {
-		sqlStr += "( ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::integer, ?::text, ?::float, ?::text, ?::float, ?::text, ?::text, ?::text, ?::text, ?::float, ?::float, ?::text, ?::text, ?::text, ?::float, ?::text, ?::float, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text),"
+		sqlStr += "( ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text, ?::integer, ?::text, ?::float, ?::text, ?::float, ?::text, ?::text, ?::text, ?::float, ?::float, ?::float, ?::text, ?::text, ?::text, ?::float, ?::text, ?::float, ?::text, ?::text, ?::text, ?::text, ?::text, ?::text),"
 		vals = append(vals, row.MasterAirWaybill,
 			utils.NewNullString(row.HouseAirWaybill),
 			utils.NewNullString(row.Category),
@@ -310,4 +325,39 @@ func (r repository) UpdatePreImportManifestDetail(ctx context.Context, data []*U
 	}
 
 	return nil
+}
+
+// func (r repository) GetOneByUploaddingUUID(ctx context.Context, uuid string) (*GetOneModel, error) {
+// 	return nil, nil
+// }
+
+func (r repository) GetSummaryByUploaddingUUID(ctx context.Context, uploadLoggingUUID string) ([]*GetSummaryModel, error) {
+	db := ctx.Value("postgreSQLConn").(*pg.DB)
+	ctx, _ = context.WithTimeout(context.Background(), 5*time.Second)
+
+	var list []*GetSummaryModel
+	_, err := db.QueryContext(ctx, &list,
+		`
+		SELECT distinct
+			tpimd.house_air_waybill as hawb,
+			tpimd.category,
+			tpimd.cif_value_foreign*0.07 as vat,
+			tpimd.cif_value_foreign*(mhcv.duty_rate/100) as duty
+		FROM public.tbl_upload_loggings ul
+		left join tbl_pre_import_manifest_headers tpimh on tpimh.upload_logging_uuid = ul."uuid"
+		left join tbl_pre_import_manifest_details tpimd on tpimd.header_uuid = tpimh."uuid"
+		LEFT JOIN LATERAL (
+		    SELECT duty_rate
+		    FROM master_hs_code_v2
+		    WHERE TRIM(UPPER(goods_en)) = TRIM(UPPER(tpimd.english_description_of_good))
+		    LIMIT 1
+		) mhcv ON true
+		where ul.uuid = ?0
+	`, uploadLoggingUUID)
+
+	if err != nil {
+		return list, err
+	}
+
+	return list, nil
 }

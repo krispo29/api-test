@@ -123,11 +123,17 @@ func New(
 			customerSvc := customerHandler{s.svcFactory.CustomerSvc}
 			r.Mount("/customers", customerSvc.router())
 
+			userSvc := userHandler{s.svcFactory.UserSvc}
+			r.Mount("/users", userSvc.router())
+
 			uploadlogSvc := uploadLoggingHandler{s.svcFactory.UploadlogSvc}
 			r.Mount("/uploadlog", uploadlogSvc.router())
 
 			mawbSvc := mawbHandler{s.svcFactory.MawbSvc}
 			r.Mount("/mawb", mawbSvc.router())
+
+			settingSvc := settingHandler{s.svcFactory.SettingSvc}
+			r.Mount("/settings", settingSvc.router())
 
 			// r.Mount("/inbound", manifestSvc.router())
 
@@ -139,6 +145,10 @@ func New(
 			r.Route("/outbound", func(r chi.Router) {
 				outboundExpressServiceSvc := outboundExpressHandler{s.svcFactory.OutboundExpressServiceSvc}
 				r.Mount("/express", outboundExpressServiceSvc.router())
+
+				outboundMawbServiceSvc := outboundMawbHandler{s.svcFactory.OutboundMawbServiceSvc}
+				r.Mount("/mawb", outboundMawbServiceSvc.router())
+
 			})
 
 			// authSvc := authHandler{s.svcFactory.AuthSvc}
