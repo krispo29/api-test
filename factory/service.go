@@ -5,6 +5,7 @@ import (
 
 	"hpc-express-service/auth"
 	"hpc-express-service/common"
+	"hpc-express-service/compare"
 	"hpc-express-service/config"
 	"hpc-express-service/customer"
 	"hpc-express-service/dashboard"
@@ -23,6 +24,7 @@ import (
 type ServiceFactory struct {
 	AuthSvc                   auth.Service
 	CommonSvc                 common.Service
+	CompareSvc                compare.ExcelServiceInterface // Added
 	InboundExpressServiceSvc  inbound.InboundExpressService
 	Ship2cuSvc                ship2cu.Service
 	UploadlogSvc              uploadlog.Service
@@ -37,7 +39,7 @@ type ServiceFactory struct {
 }
 
 func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client, conf *config.Config) *ServiceFactory {
-	timeoutContext := time.Duration(60) * time.Second
+	// timeoutContext := time.Duration(60) * time.Second // Already defined in repository factory, service might use its own or reuse if passed
 
 	/*
 	* Sharing Services
@@ -88,6 +90,9 @@ func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client, conf *con
 	/*
 	* Sharing Services
 	 */
+
+	// Compare Service
+	compareSvc := compare.NewExcelService(repo.CompareRepo) // Added
 
 	// Auth
 	authSvc := auth.NewService(
@@ -145,6 +150,7 @@ func NewServiceFactory(repo *RepositoryFactory, gcsClient *gcs.Client, conf *con
 		CustomerSvc:               customerSvc,
 		DashboardSvc:              dashboardSvc,
 		UserSvc:                   userSvc,
+		CompareSvc:                compareSvc, // Added
 		SettingSvc:                settingSvc,
 	}
 }
