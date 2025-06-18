@@ -62,7 +62,7 @@ func (h *excelHandler) CompareExcel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. เรียกใช้ Service เพื่อประมวลผลการเปรียบเทียบ
-	response, err := h.service.CompareExcelWithDB(excelValues, columnName) // Pass columnName here
+	response, err := h.service.CompareExcelWithDB(r.Context(), excelValues, columnName) // Pass columnName here
 	if err != nil {
 		// Log error server-side
 		fmt.Printf("Service error during comparison for column '%s': %v\n", columnName, err)

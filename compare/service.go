@@ -1,30 +1,29 @@
 package compare
 
 import (
+	"context"
 	"fmt"
-
-	"hpc-express-service/compare"
 )
 
 // ExcelServiceInterface กำหนด Contract สำหรับ Service
 type ExcelServiceInterface interface {
-	CompareExcelWithDB(excelData map[string]struct{}, columnName string) (*compare.CompareResponse, error)
+	CompareExcelWithDB(ctx context.Context, excelData map[string]struct{}, columnName string) (*CompareResponse, error)
 }
 
 // excelService implements ExcelServiceInterface
 type excelService struct {
-	repo compare.ExcelRepositoryInterface
+	repo ExcelRepositoryInterface
 }
 
 // NewExcelService สร้าง instance ของ ExcelService
-func NewExcelService(repo compare.ExcelRepositoryInterface) ExcelServiceInterface {
+func NewExcelService(repo ExcelRepositoryInterface) ExcelServiceInterface {
 	return &excelService{repo: repo}
 }
 
 // CompareExcelWithDB ดำเนินการเปรียบเทียบข้อมูล Excel กับข้อมูลในฐานข้อมูล
-func (s *excelService) CompareExcelWithDB(excelValues map[string]struct{}, columnName string) (*compare.CompareResponse, error) {
+func (s *excelService) CompareExcelWithDB(ctx context.Context, excelValues map[string]struct{}, columnName string) (*CompareResponse, error) {
 	// 1. ดึงข้อมูลจากฐานข้อมูลผ่าน Repository
-	dbValuesSlice, err := s.repo.GetValuesFromDB(columnName) // Pass columnName here
+	dbValuesSlice, err := s.repo.GetValuesFromDB(ctx, columnName) // Pass columnName here
 	if err != nil {
 		return nil, fmt.Errorf("service: failed to get data from database for column %s: %w", columnName, err)
 	}
@@ -58,7 +57,7 @@ func (s *excelService) CompareExcelWithDB(excelValues map[string]struct{}, colum
 	}
 
 	// 3. สร้างผลลัพธ์
-	response := &compare.CompareResponse{
+	response := &CompareResponse{
 		TotalExcelRows: len(excelValues),
 		TotalDBRows:    len(dbValuesMap),
 		MatchedRows:    matchedRows,
