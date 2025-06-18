@@ -8,7 +8,7 @@ import (
 
 // ExcelServiceInterface กำหนด Contract สำหรับ Service
 type ExcelServiceInterface interface {
-	CompareExcelWithDB(excelData map[string]struct{}) (*compare.CompareResponse, error)
+	CompareExcelWithDB(excelData map[string]struct{}, columnName string) (*compare.CompareResponse, error)
 }
 
 // excelService implements ExcelServiceInterface
@@ -22,11 +22,11 @@ func NewExcelService(repo compare.ExcelRepositoryInterface) ExcelServiceInterfac
 }
 
 // CompareExcelWithDB ดำเนินการเปรียบเทียบข้อมูล Excel กับข้อมูลในฐานข้อมูล
-func (s *excelService) CompareExcelWithDB(excelValues map[string]struct{}) (*compare.CompareResponse, error) {
+func (s *excelService) CompareExcelWithDB(excelValues map[string]struct{}, columnName string) (*compare.CompareResponse, error) {
 	// 1. ดึงข้อมูลจากฐานข้อมูลผ่าน Repository
-	dbValuesSlice, err := s.repo.GetAllValuesFromDB()
+	dbValuesSlice, err := s.repo.GetValuesFromDB(columnName) // Pass columnName here
 	if err != nil {
-		return nil, fmt.Errorf("service: failed to get data from database: %w", err)
+		return nil, fmt.Errorf("service: failed to get data from database for column %s: %w", columnName, err)
 	}
 
 	// แปลง slice เป็น map เพื่อการค้นหาที่รวดเร็ว
@@ -35,9 +35,9 @@ func (s *excelService) CompareExcelWithDB(excelValues map[string]struct{}) (*com
 		dbValuesMap[val] = struct{}{}
 	}
 
-	// 2. เปรียบเทียบข้อมูล (Business Logic)
+	// 2. เปรียบเทียบข้อมูล (Business Logic) - This part remains largely the same
 	matchedRows := 0
-	mismatchedRows := 0
+	// mismatchedRows := 0 // This was calculated incorrectly before, should be len(excelMissingInDB)
 	var excelMissingInDB []string // ข้อมูลที่มีใน Excel แต่ไม่มีใน DB
 	var dbMissingInExcel []string // ข้อมูลที่มีใน DB แต่ไม่มีใน Excel
 
@@ -46,13 +46,12 @@ func (s *excelService) CompareExcelWithDB(excelValues map[string]struct{}) (*com
 		if _, exists := dbValuesMap[excelVal]; exists {
 			matchedRows++
 		} else {
-			mismatchedRows++
 			excelMissingInDB = append(excelMissingInDB, excelVal)
 		}
 	}
 
 	// ตรวจสอบข้อมูลใน DB เทียบกับ Excel (เพื่อหา MissingInExcel)
-	for _, dbVal := range dbValuesSlice { // ใช้วลูปจาก slice เพื่อให้แน่ใจว่าครอบคลุมทุกค่าใน DB
+	for _, dbVal := range dbValuesSlice {
 		if _, exists := excelValues[dbVal]; !exists {
 			dbMissingInExcel = append(dbMissingInExcel, dbVal)
 		}
@@ -61,9 +60,9 @@ func (s *excelService) CompareExcelWithDB(excelValues map[string]struct{}) (*com
 	// 3. สร้างผลลัพธ์
 	response := &compare.CompareResponse{
 		TotalExcelRows: len(excelValues),
-		TotalDBRows:    len(dbValuesMap), // ใช้ len ของ map เพื่อไม่นับค่าซ้ำ
+		TotalDBRows:    len(dbValuesMap),
 		MatchedRows:    matchedRows,
-		MismatchedRows: mismatchedRows,
+		MismatchedRows: len(excelMissingInDB), // Corrected calculation
 		MissingInExcel: dbMissingInExcel,
 		MissingInDB:    excelMissingInDB,
 	}
