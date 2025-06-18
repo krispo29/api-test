@@ -52,20 +52,21 @@ func (h *excelHandler) CompareExcel(w http.ResponseWriter, r *http.Request) {
 
 	excelValues, err := utils.ReadExcelColumn(excelFileBytes, columnName)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error processing Excel file: %v", err), http.StatusBadRequest)
+		// It might be good to include columnName in this error message too
+		http.Error(w, fmt.Sprintf("Error processing Excel file for column '%s': %v", columnName, err), http.StatusBadRequest)
 		return
 	}
 	if len(excelValues) == 0 {
-		http.Error(w, "No data found in the specified Excel column.", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("No data found in the specified Excel column '%s'.", columnName), http.StatusBadRequest)
 		return
 	}
 
 	// 3. เรียกใช้ Service เพื่อประมวลผลการเปรียบเทียบ
-	response, err := h.service.CompareExcelWithDB(excelValues)
+	response, err := h.service.CompareExcelWithDB(excelValues, columnName) // Pass columnName here
 	if err != nil {
 		// Log error server-side
-		fmt.Printf("Service error: %v\n", err)
-		http.Error(w, fmt.Sprintf("Error during comparison: %v", err), http.StatusInternalServerError)
+		fmt.Printf("Service error during comparison for column '%s': %v\n", columnName, err)
+		http.Error(w, fmt.Sprintf("Error during comparison for column '%s': %v", columnName, err), http.StatusInternalServerError)
 		return
 	}
 
