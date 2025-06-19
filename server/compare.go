@@ -41,6 +41,20 @@ func (h *excelHandler) CompareExcel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// จำกัดคอลัมน์ที่อนุญาต
+	allowedColumns := map[string]bool{
+		"goods_en":  true,
+		"goods_th":  true,
+		"hs_code":   true,
+		"tariff":    true,
+		"unit_code": true,
+		"duty_rate": true,
+	}
+	if !allowedColumns[columnName] {
+		http.Error(w, fmt.Sprintf("Column '%s' is not allowed for comparison", columnName), http.StatusBadRequest)
+		return
+	}
+
 	excelFileBytes, err := io.ReadAll(file)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error reading file: %v", err), http.StatusInternalServerError)
