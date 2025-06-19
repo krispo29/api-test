@@ -18,42 +18,41 @@ func NewExcelService(repo ExcelRepositoryInterface) ExcelServiceInterface {
 }
 
 func (s *excelService) CompareExcelWithDB(ctx context.Context, excelValues map[string]struct{}, columnName string) (*CompareResponse, error) {
+	// ดึงข้อมูลจากฐานข้อมูล
 	dbValuesSlice, err := s.repo.GetValuesFromDB(ctx, columnName)
 	if err != nil {
-		return nil, fmt.Errorf("service: failed to get data from database for column %s: %w", columnName, err)
+		return nil, fmt.Errorf("failed to get values from DB: %w", err)
 	}
 
+	// สร้าง map สำหรับข้อมูลใน DB
 	dbValuesMap := make(map[string]struct{})
 	for _, val := range dbValuesSlice {
 		dbValuesMap[val] = struct{}{}
 	}
 
+	// เปรียบเทียบข้อมูล
 	matchedRows := 0
-	var excelMissingInDB []string
-	var dbMissingInExcel []string
+	excelItems := []ExcelItem{}
 
 	for excelVal := range excelValues {
+		isMatch := false
 		if _, exists := dbValuesMap[excelVal]; exists {
 			matchedRows++
-		} else {
-			excelMissingInDB = append(excelMissingInDB, excelVal)
+			isMatch = true
 		}
+		excelItems = append(excelItems, ExcelItem{
+			Value:   excelVal,
+			IsMatch: isMatch,
+		})
 	}
 
-	for _, dbVal := range dbValuesSlice {
-		if _, exists := excelValues[dbVal]; !exists {
-			dbMissingInExcel = append(dbMissingInExcel, dbVal)
-		}
-	}
-
-	// 3. สร้างผลลัพธ์
+	// สร้าง response
 	response := &CompareResponse{
 		TotalExcelRows: len(excelValues),
 		TotalDBRows:    len(dbValuesMap),
 		MatchedRows:    matchedRows,
-		MismatchedRows: len(excelMissingInDB),
-		MissingInExcel: dbMissingInExcel,
-		MissingInDB:    excelMissingInDB,
+		MismatchedRows: len(excelValues) - matchedRows,
+		ExcelItems:     excelItems,
 	}
 
 	return response, nil
