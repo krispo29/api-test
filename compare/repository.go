@@ -3,9 +3,8 @@ package compare
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"log"
+	"time"
 
 	"github.com/go-pg/pg/v9"
 )
@@ -30,8 +29,6 @@ func (r *excelRepository) GetValuesFromDB(ctx context.Context, columnName string
 		return nil, fmt.Errorf("database connection not found in context")
 	}
 
-	log.Printf("Connected to database: %s", db.Options().Database)
-
 	ctxQuery, cancel := context.WithTimeout(ctx, r.contextTimeout)
 	defer cancel()
 
@@ -39,26 +36,31 @@ func (r *excelRepository) GetValuesFromDB(ctx context.Context, columnName string
 		return nil, fmt.Errorf("columnName cannot be empty")
 	}
 
-	// Map allowed column names to ensure correct matching
-	allowedColumns := map[string]string{
-		"goods_en": "goods_en",
-		"hs_code":  "hs_code",
+	// ตรวจสอบว่าคอลัมน์มีอยู่ในตาราง
+	var exists bool
+	_, err := db.QueryOneContext(ctxQuery, &exists, `
+		SELECT EXISTS (
+			SELECT 1 
+			FROM information_schema.columns 
+			WHERE table_schema = 'public' 
+			AND table_name = 'tbl_compare_goods' 
+			AND column_name = ?
+		)`, columnName)
+	if err != nil {
+		log.Printf("Failed to check column existence: %v", err)
+		return nil, fmt.Errorf("failed to check column existence: %w", err)
 	}
-	mappedColumn, ok := allowedColumns[columnName]
-	if !ok {
-		return nil, fmt.Errorf("invalid column name: %s", columnName)
+	if !exists {
+		return nil, fmt.Errorf("column '%s' does not exist in table tbl_compare_goods", columnName)
 	}
 
-	query := fmt.Sprintf("SELECT %s FROM public.tbl_compare_goods WHERE %s IS NOT NULL AND %s != ''", pg.Ident(mappedColumn), pg.Ident(mappedColumn), pg.Ident(mappedColumn))
-	log.Printf("Executing query: %s", query)
+	query := fmt.Sprintf("SELECT %s FROM public.tbl_compare_goods WHERE %s IS NOT NULL AND %s != ''", pg.Ident(columnName), pg.Ident(columnName), pg.Ident(columnName))
 
 	var dbValues []string
-	_, err := db.WithContext(ctxQuery).Query(&dbValues, query)
+	_, err = db.WithContext(ctxQuery).Query(&dbValues, query)
 	if err != nil {
 		log.Printf("Query failed: %v", err)
 		return nil, fmt.Errorf("failed to query database for column %s: %w", columnName, err)
 	}
-
-	log.Printf("Retrieved values: %+v", dbValues)
 	return dbValues, nil
 }

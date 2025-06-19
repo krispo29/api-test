@@ -51,7 +51,6 @@ func (s *excelService) CompareExcelWithDB(ctx context.Context, excelValues map[s
 		TotalExcelRows: len(excelValues),
 		TotalDBRows:    len(dbValuesMap),
 		MatchedRows:    matchedRows,
-		MismatchedRows: len(excelValues) - matchedRows,
 		ExcelItems:     excelItems,
 	}
 

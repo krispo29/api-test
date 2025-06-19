@@ -9,6 +9,5 @@ type CompareResponse struct {
 	TotalExcelRows int         `json:"totalExcelRows"`
 	TotalDBRows    int         `json:"totalDBRows"`
 	MatchedRows    int         `json:"matchedRows"`
-	MismatchedRows int         `json:"mismatchedRows"`
 	ExcelItems     []ExcelItem `json:"excelItems"`
 }

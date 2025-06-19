@@ -1,65 +1,55 @@
 package utils
 
 import (
+	"bytes"
 	"fmt"
-	"strings"
 
 	"github.com/xuri/excelize/v2"
 )
 
-// ReadExcelColumn อ่านค่าจาก Column ที่ระบุในไฟล์ Excel
-// และส่งคืนเป็น map[string]struct{} เพื่อความรวดเร็วในการค้นหาและไม่เก็บค่าซ้ำ
 func ReadExcelColumn(fileBytes []byte, columnName string) (map[string]struct{}, error) {
-	f, err := excelize.OpenReader(strings.NewReader(string(fileBytes)))
+	values := make(map[string]struct{})
+	file, err := excelize.OpenReader(bytes.NewReader(fileBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open Excel file: %w", err)
 	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			fmt.Printf("Error closing Excel file: %v\n", err)
-		}
-	}()
+	defer file.Close()
 
-	sheetName := f.GetSheetName(0) // ได้ชื่อ Sheet แรก
-	if sheetName == "" {
-		return nil, fmt.Errorf("no sheet found in Excel file")
+	sheets := file.GetSheetList()
+	if len(sheets) == 0 {
+		return nil, fmt.Errorf("no sheets found in Excel file")
 	}
 
-	rows, err := f.GetRows(sheetName)
+	rows, err := file.GetRows(sheets[0])
 	if err != nil {
-		return nil, fmt.Errorf("failed to get rows from sheet: %w", err)
+		return nil, fmt.Errorf("failed to read rows: %w", err)
 	}
-
 	if len(rows) == 0 {
-		return nil, fmt.Errorf("excel file is empty or has no data rows")
+		return nil, fmt.Errorf("no rows found in sheet")
 	}
 
-	// ค้นหา Index ของ Column ที่ Frontend ส่งมา
+	// หา index ของคอลัมน์
 	columnIndex := -1
-	headerRow := rows[0] // แถวแรกคือ Header
-	for i, cellValue := range headerRow {
-		if strings.EqualFold(strings.TrimSpace(cellValue), strings.TrimSpace(columnName)) { // เปรียบเทียบแบบไม่สนใจ Case และตัดช่องว่าง
+	for i, header := range rows[0] {
+		if header == columnName {
 			columnIndex = i
 			break
 		}
 	}
-
 	if columnIndex == -1 {
 		return nil, fmt.Errorf("column '%s' not found in Excel file", columnName)
 	}
 
-	excelValues := make(map[string]struct{})
-	for i, row := range rows {
-		if i == 0 { // ข้าม Header Row
-			continue
-		}
-		if columnIndex < len(row) {
-			val := strings.TrimSpace(row[columnIndex])
-			if val != "" { // ไม่เก็บค่าว่าง
-				excelValues[val] = struct{}{}
-			}
+	// อ่านข้อมูลจากคอลัมน์
+	for _, row := range rows[1:] { // ข้าม header
+		if columnIndex < len(row) && row[columnIndex] != "" {
+			values[row[columnIndex]] = struct{}{}
 		}
 	}
 
-	return excelValues, nil
+	if len(values) == 0 {
+		return nil, fmt.Errorf("no valid values found in column '%s'", columnName)
+	}
+
+	return values, nil
 }

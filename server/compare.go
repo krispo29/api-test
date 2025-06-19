@@ -22,8 +22,11 @@ func NewExcelHandler(svc compare.ExcelServiceInterface) ExcelHandlerInterface {
 }
 
 func (h *excelHandler) CompareExcel(w http.ResponseWriter, r *http.Request) {
-
-	r.ParseMultipartForm(10 << 20)
+	err := r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error parsing multipart form: %v", err), http.StatusBadRequest)
+		return
+	}
 
 	file, _, err := r.FormFile("excelFile")
 	if err != nil {
@@ -50,7 +53,7 @@ func (h *excelHandler) CompareExcel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(excelValues) == 0 {
-		http.Error(w, fmt.Sprintf("No data found in the specified Excel column '%s'.", columnName), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("No data found in the specified Excel column '%s'", columnName), http.StatusBadRequest)
 		return
 	}
 
@@ -62,5 +65,6 @@ func (h *excelHandler) CompareExcel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
