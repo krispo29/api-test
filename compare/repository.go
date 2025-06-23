@@ -74,7 +74,7 @@ func (r *excelRepository) GetValuesFromDB(ctx context.Context, columnName string
 		pg.Ident(columnName), pg.Ident(columnName))
 	log.Printf("Executing query: %s", query)
 
-	var dbValues []DBDetails
+	var dbValues []*DBDetails
 	_, err = db.WithContext(ctxQuery).Query(&dbValues, query)
 	if err != nil {
 		log.Printf("Query failed: %v", err)
