@@ -3,6 +3,7 @@ package compare
 import (
 	"context"
 	"fmt"
+	"log"
 )
 
 type ExcelServiceInterface interface {
@@ -30,8 +31,8 @@ func (s *excelService) CompareExcelWithDB(ctx context.Context, excelValues map[s
 	}
 
 	// สร้าง map สำหรับเปรียบเทียบตาม columnName และ hs_code
-	dbValuesMap := make(map[string]DBDetails) // สำหรับ columnName
-	hsCodeMap := make(map[string][]DBDetails) // สำหรับ hs_code
+	dbValuesMap := make(map[string]DBDetails)
+	hsCodeMap := make(map[string][]DBDetails)
 	for _, row := range dbValuesSlice {
 		var val string
 		switch columnName {
@@ -52,46 +53,57 @@ func (s *excelService) CompareExcelWithDB(ctx context.Context, excelValues map[s
 			dbValuesMap[val] = row
 		}
 		if row.HSCode != "" {
+			for _, existingRow := range hsCodeMap[row.HSCode] {
+				if existingRow.GoodsEN != row.GoodsEN || existingRow.GoodsTH != row.GoodsTH {
+					log.Printf("Warning: Potential inconsistent data for HSCode %s. Record 1: GoodsEN='%s', GoodsTH='%s'. Record 2: GoodsEN='%s', GoodsTH='%s'", row.HSCode, existingRow.GoodsEN, existingRow.GoodsTH, row.GoodsEN, row.GoodsTH)
+				}
+			}
 			hsCodeMap[row.HSCode] = append(hsCodeMap[row.HSCode], row)
 		}
 	}
 
-	// เปรียบเทียบข้อมูล
 	matchedRows := 0
-	excelItems := []ExcelItem{}
+	excelItems := make([]ExcelItem, 0, len(excelValues))
 
 	for _, excelVal := range excelValues {
-		item := ExcelItem{
-			Value:   excelVal.Value,
-			IsMatch: false,
-		}
-
-		// ตรวจสอบการจับคู่โดย columnName
+		item := ExcelItem{Value: excelVal.Value}
 		if dbRow, exists := dbValuesMap[excelVal.Value]; exists {
-			matchedRows++
 			item.IsMatch = true
 			item.MatchedBy = "column"
 			item.DBDetails = &dbRow
+			matchedRows++
 		} else if (columnName == "goods_en" || columnName == "goods_th") && excelVal.HSCode != "" {
-			// ตรวจสอบ hs_code สำหรับ goods_en หรือ goods_th
-			if rows, exists := hsCodeMap[excelVal.HSCode]; exists {
-				matchedRows++
-				item.IsMatch = true
-				item.MatchedBy = "hs_code"
-				item.DBDetails = &rows[0] // เลือกแถวแรกหากมีหลายแถว
+			if dbRecords, ok := hsCodeMap[excelVal.HSCode]; ok && len(dbRecords) > 0 {
+				matchType := "hs_code_fallback"
+				for _, record := range dbRecords {
+					if (columnName == "goods_en" && record.GoodsEN == excelVal.Value) ||
+						(columnName == "goods_th" && record.GoodsTH == excelVal.Value) {
+						item.DBDetails = &record
+						item.IsMatch = true
+						if columnName == "goods_en" {
+							matchType = "hs_code_specific_en"
+						} else {
+							matchType = "hs_code_specific_th"
+						}
+						matchedRows++
+						break
+					}
+				}
+				if !item.IsMatch {
+					item.DBDetails = &dbRecords[0]
+					item.IsMatch = true
+					matchedRows++
+				}
+				item.MatchedBy = matchType
 			}
 		}
-
 		excelItems = append(excelItems, item)
 	}
 
-	// สร้าง response
-	response := &CompareResponse{
+	return &CompareResponse{
 		TotalExcelRows: len(excelValues),
 		TotalDBRows:    len(dbValuesMap),
 		MatchedRows:    matchedRows,
 		ExcelItems:     excelItems,
-	}
-
-	return response, nil
+	}, nil
 }

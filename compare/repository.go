@@ -56,7 +56,7 @@ func (r *excelRepository) GetValuesFromDB(ctx context.Context, columnName string
             SELECT 1 
             FROM information_schema.columns 
             WHERE table_schema = 'public' 
-            AND table_name = 'tbl_compare_goods' 
+            AND table_name = 'master_hs_code_v2' 
             AND column_name = ?
         )`, columnName)
 	if err != nil {
@@ -64,13 +64,13 @@ func (r *excelRepository) GetValuesFromDB(ctx context.Context, columnName string
 		return nil, fmt.Errorf("failed to check column existence: %w", err)
 	}
 	if !exists {
-		return nil, fmt.Errorf("column '%s' does not exist in table tbl_compare_goods", columnName)
+		return nil, fmt.Errorf("column '%s' does not exist in table master_hs_code_v2", columnName)
 	}
 
 	query := fmt.Sprintf(`
         SELECT goods_en, goods_th, tariff, stat, unit_code, duty_rate, 
                created_at, updated_at, deleted_at, remark, hs_code 
-        FROM public.tbl_compare_goods 
+        FROM public.master_hs_code_v2 
         WHERE %s IS NOT NULL AND %s != '' AND hs_code IS NOT NULL AND hs_code != ''`,
 		pg.Ident(columnName), pg.Ident(columnName))
 	log.Printf("Executing query: %s", query)
