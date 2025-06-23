@@ -7,7 +7,17 @@ import (
 	"hpc-express-service/utils"
 	"io"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
+
+func (h *excelHandler) router() chi.Router {
+	r := chi.NewRouter()
+
+	r.Post("/compare", h.CompareExcel)
+
+	return r
+}
 
 type ExcelHandlerInterface interface {
 	CompareExcel(w http.ResponseWriter, r *http.Request)

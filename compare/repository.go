@@ -36,7 +36,6 @@ func (r *excelRepository) GetValuesFromDB(ctx context.Context, columnName string
 		return nil, fmt.Errorf("columnName cannot be empty")
 	}
 
-	// จำกัดคอลัมน์ที่อนุญาต
 	allowedColumns := map[string]bool{
 		"goods_en":  true,
 		"goods_th":  true,

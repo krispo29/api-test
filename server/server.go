@@ -135,13 +135,10 @@ func New(
 			settingSvc := settingHandler{s.svcFactory.SettingSvc}
 			r.Mount("/settings", settingSvc.router())
 
-			compareService := s.svcFactory.CompareSvc
-			if compareService != nil {
-				compareApiHandler := NewExcelHandler(compareService)
-				r.Post("/compare", compareApiHandler.CompareExcel)
-			} else {
-				log.Println("Warning: CompareService not initialized, /v1/compare route not mounted.")
-			}
+			compareSvc := excelHandler{s.svcFactory.CompareSvc}
+			r.Mount("/compare", compareSvc.router())
+
+			//("/compare", compareApiHandler.CompareExcel)
 
 			// r.Mount("/inbound", manifestSvc.router())
 

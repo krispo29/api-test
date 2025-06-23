@@ -11,8 +11,8 @@ type ExcelServiceInterface interface {
 }
 
 type ExcelValue struct {
-	Value  string // ค่าจากคอลัมน์ที่เลือก
-	HSCode string // hs_code จาก Excel (ถ้ามี)
+	Value  string
+	HSCode string
 }
 
 type excelService struct {

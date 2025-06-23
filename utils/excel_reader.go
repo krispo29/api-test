@@ -47,7 +47,6 @@ func ReadExcelColumn(fileBytes []byte, columnName string) (map[string]compare.Ex
 		return nil, fmt.Errorf("column 'hs_code' is required when comparing '%s'", columnName)
 	}
 
-	// อ่านข้อมูลจากคอลัมน์
 	for _, row := range rows[1:] { // ข้าม header
 		if columnIndex < len(row) && row[columnIndex] != "" {
 			hsCode := ""
