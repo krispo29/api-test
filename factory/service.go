@@ -5,7 +5,6 @@ import (
 
 	"hpc-express-service/auth"
 	"hpc-express-service/common"
-	"hpc-express-service/compare"
 	"hpc-express-service/config"
 	"hpc-express-service/customer"
 	"hpc-express-service/dashboard"
@@ -17,6 +16,7 @@ import (
 	"hpc-express-service/setting"
 	"hpc-express-service/ship2cu"
 	"hpc-express-service/shopee"
+	"hpc-express-service/tools/compare"
 	"hpc-express-service/uploadlog"
 	"hpc-express-service/user"
 )

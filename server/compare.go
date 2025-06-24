@@ -3,8 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"hpc-express-service/compare"
-	"hpc-express-service/utils"
+	"hpc-express-service/tools/compare"
 	"io"
 	"net/http"
 
@@ -14,7 +13,7 @@ import (
 func (h *excelHandler) router() chi.Router {
 	r := chi.NewRouter()
 
-	r.Post("/compare", h.CompareExcel)
+	r.Post("/", h.CompareExcel)
 
 	return r
 }
@@ -71,20 +70,20 @@ func (h *excelHandler) CompareExcel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	excelValues, err := utils.ReadExcelColumn(excelFileBytes, columnName)
+	// Excel processing is now handled by the service
+	response, err := h.service.CompareExcelWithDB(r.Context(), excelFileBytes, columnName)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error processing Excel file for column '%s': %v", columnName, err), http.StatusBadRequest)
-		return
-	}
-	if len(excelValues) == 0 {
-		http.Error(w, fmt.Sprintf("No data found in the specified Excel column '%s'", columnName), http.StatusBadRequest)
-		return
-	}
-
-	response, err := h.service.CompareExcelWithDB(r.Context(), excelValues, columnName)
-	if err != nil {
-		fmt.Printf("Service error during comparison for column '%s': %v\n", columnName, err)
-		http.Error(w, fmt.Sprintf("Error during comparison for column '%s': %v", columnName, err), http.StatusInternalServerError)
+		// Check if the error is something the user should see as BadRequest vs InternalServerError
+		// For now, let's assume service errors are generally internal or propagated input errors become bad requests.
+		// The service function readExcelColumnFromBytes already returns specific errors that can be
+		// interpreted as bad requests (e.g., column not found, no data in column).
+		// We might need more sophisticated error handling here to distinguish.
+		// For simplicity, if the service returns an error, we'll treat it as a potential internal server error
+		// or a bad request if it's due to bad input that the service detected.
+		// The service should ideally wrap errors or return specific error types.
+		// For now, let's keep it as InternalServerError and log the actual error.
+		fmt.Printf("Service error during comparison for column '%s': %v\n", columnName, err)           // Log for debugging
+		http.Error(w, fmt.Sprintf("Error during comparison: %v", err), http.StatusInternalServerError) // User-facing error
 		return
 	}
 

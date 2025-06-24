@@ -10,7 +10,7 @@ import (
 )
 
 type ExcelRepositoryInterface interface {
-	GetValuesFromDB(ctx context.Context, columnName string) ([]DBDetails, error)
+	GetValuesFromDB(ctx context.Context, columnName string) ([]*DBDetails, error)
 }
 
 type excelRepository struct {
@@ -23,7 +23,7 @@ func NewExcelRepository(timeout time.Duration) ExcelRepositoryInterface {
 	}
 }
 
-func (r *excelRepository) GetValuesFromDB(ctx context.Context, columnName string) ([]DBDetails, error) {
+func (r *excelRepository) GetValuesFromDB(ctx context.Context, columnName string) ([]*DBDetails, error) {
 	db := ctx.Value("postgreSQLConn").(*pg.DB)
 	if db == nil {
 		return nil, fmt.Errorf("database connection not found in context")
@@ -36,19 +36,8 @@ func (r *excelRepository) GetValuesFromDB(ctx context.Context, columnName string
 		return nil, fmt.Errorf("columnName cannot be empty")
 	}
 
-	allowedColumns := map[string]bool{
-		"goods_en":  true,
-		"goods_th":  true,
-		"hs_code":   true,
-		"tariff":    true,
-		"unit_code": true,
-		"duty_rate": true,
-	}
-	if !allowedColumns[columnName] {
-		return nil, fmt.Errorf("column '%s' is not allowed for comparison", columnName)
-	}
-
 	// ตรวจสอบว่าคอลัมน์มีอยู่ในตาราง
+	// Column allowance validation moved to service layer.
 	var exists bool
 	_, err := db.QueryOneContext(ctxQuery, &exists, `
         SELECT EXISTS (
